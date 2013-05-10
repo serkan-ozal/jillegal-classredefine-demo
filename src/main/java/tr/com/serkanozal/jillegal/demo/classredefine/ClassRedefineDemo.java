@@ -1,3 +1,10 @@
+/**
+ * @author SERKAN OZAL
+ *         
+ *         E-Mail: <a href="mailto:serkanozal86@hotmail.com">serkanozal86@hotmail.com</a>
+ *         GitHub: <a>https://github.com/serkan-ozal</a>
+ */
+
 package tr.com.serkanozal.jillegal.demo.classredefine;
 
 import tr.com.serkanozal.jillegal.core.Jillegal;
@@ -7,6 +14,11 @@ import tr.com.serkanozal.jillegal.core.util.JvmUtil;
 
 public class ClassRedefineDemo {
 
+	private static final int SUPER_CLASS_POINTER_OFFSET_FOR_32_BIT_JAVA_6 = 32;
+	private static final int SUPER_CLASS_POINTER_OFFSET_FOR_64_BIT_JAVA_6 = 56;
+	private static final int SUPER_CLASS_POINTER_OFFSET_FOR_32_BIT_JAVA_7 = 36;
+	private static final int SUPER_CLASS_POINTER_OFFSET_FOR_64_BIT_JAVA_7 = 64;
+	
 	static {
 		Jillegal.init();
 	}
@@ -21,7 +33,8 @@ public class ClassRedefineDemo {
 		
 		try {
 			obj = new SampleClass();
-			baseObj = (SampleBaseClass)(Object)obj;
+			// Throws "ClassCastException", because "SampleClass" class doesn't extends from "SampleBaseClass" class
+			baseObj = (SampleBaseClass)(Object)obj; 
 			System.out.println(baseObj);
 		}
 		catch (ClassCastException e) {
@@ -33,39 +46,68 @@ public class ClassRedefineDemo {
 		long addressOfClass = JvmUtil.addressOfClass(SampleClass.class);
 		long addressOfBaseClass = JvmUtil.addressOfClass(SampleBaseClass.class);
 		
-		System.out.println(Long.toHexString(addressOfClass));
-		System.out.println(Long.toHexString(addressOfClass >> 3));
-		System.out.println(Long.toHexString(addressOfBaseClass));
-		System.out.println(Long.toHexString(addressOfBaseClass >> 3));
-		System.out.println(JvmUtil.getOptions().getCompressRefShift());
-		JvmUtil.dump(addressOfClass, 256);
-		JvmUtil.dump(new SampleClass(), 128);
-		JvmUtil.dump(new SampleBaseClass(), 128);
-		JvmUtil.dump(directMemoryService.getLong(new SampleClass(), 8) << 3, 512);
+		JvmUtil.dump(addressOfClass, 128);
+		JvmUtil.dump(addressOfBaseClass, 128);
+
+		int superClassPointerOffset = 0;
+		if (JvmUtil.isJavaVersionSupported()) {
+			if (JvmUtil.isAddressSizeSupported()) {
+				switch (JvmUtil.JAVA_VERSION_INFO) {
+					case JAVA_VERSION_1_6:
+						switch (JvmUtil.getAddressSize()) {
+							case JvmUtil.SIZE_32_BIT:
+								superClassPointerOffset = SUPER_CLASS_POINTER_OFFSET_FOR_32_BIT_JAVA_6;
+								break;
+							case JvmUtil.SIZE_64_BIT:
+								superClassPointerOffset = SUPER_CLASS_POINTER_OFFSET_FOR_64_BIT_JAVA_6;
+								break;	
+						}
+						break;
+					case JAVA_VERSION_1_7:
+						switch (JvmUtil.getAddressSize()) {
+							case JvmUtil.SIZE_32_BIT:
+								superClassPointerOffset = SUPER_CLASS_POINTER_OFFSET_FOR_32_BIT_JAVA_7;
+								break;
+							case JvmUtil.SIZE_64_BIT:
+								superClassPointerOffset = SUPER_CLASS_POINTER_OFFSET_FOR_64_BIT_JAVA_7;
+								break;	
+						}
+						break;
+				}		
+			}
+			else {
+				new AssertionError("Unsupported address size: " + JvmUtil.getAddressSize());
+			}
+		}
+		else {
+			new AssertionError("Unsupported java version: " + JvmUtil.JAVA_SPEC_VERSION);
+		}
 		
-		//directMemoryService.putLong(addressOfClass + 32, addressOfBaseClass); 32 bit Java 6
-		//directMemoryService.putLong(addressOfClass + 56, addressOfBaseClass); 64 bit Java 6
+		// Set super class pointer of "SampleClass" to "SampleBaseClass" class definition address
+		directMemoryService.putLong(addressOfClass + superClassPointerOffset, addressOfBaseClass); 
+
 		///////////////////////////////////////////////////////////////////////////////////////////////
 		
 		try {
 			obj = new SampleClass();
+			// Doesn't throw "ClassCastException" as before, 
+			// Because now super class pointer of "SampleClass" shows "SampleBaseClass" class definition address
 			baseObj = (SampleBaseClass)(Object)obj;
 			System.out.println(baseObj);
 		}
 		catch (ClassCastException e) {
 			e.printStackTrace();
 		}
-		
 	}
 	
 	///////////////////////////////////////////////////////////////////////////////////////////
 
-	public static class SampleClass extends SampleBaseClass {
-		static int i = 100;
+	public static class SampleClass {
+
 	}
 	
 	public static class SampleBaseClass {
-		static int i = 100;
+
 	}
 	
 }
