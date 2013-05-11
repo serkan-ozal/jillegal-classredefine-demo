@@ -46,7 +46,13 @@ public class ClassRedefineDemo {
 		long addressOfClass = JvmUtil.addressOfClass(SampleClass.class);
 		long addressOfBaseClass = JvmUtil.addressOfClass(SampleBaseClass.class);
 		
+		
+		System.out.println("Memory layout of SampleClass at 0x"  + Long.toHexString(addressOfClass) + ":");
 		JvmUtil.dump(addressOfClass, 128);
+		
+		System.out.println();
+		
+		System.out.println("Memory layout of SampleBaseClass at 0x"  + Long.toHexString(addressOfBaseClass) + ":");
 		JvmUtil.dump(addressOfBaseClass, 128);
 
 		int superClassPointerOffset = 0;
@@ -103,11 +109,16 @@ public class ClassRedefineDemo {
 	///////////////////////////////////////////////////////////////////////////////////////////
 
 	public static class SampleClass {
+		
+		int i;
+		String str;
 
 	}
 	
 	public static class SampleBaseClass {
-
+		
+		char c;
+		
 	}
 	
 }
